@@ -3,3 +3,11 @@ export type User = {
     firstName: string;
     isAdmin: boolean;
   };
+
+export type JobForm = {
+    cardTitle: string;
+    date: string;
+    description: string;
+    isPremium: boolean;
+    imageUrl: string | null;
+  };

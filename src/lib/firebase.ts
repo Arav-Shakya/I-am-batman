@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, query, orderBy, limit } from "firebase/firestore";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { User } from "./types";
 
 // Your web app's Firebase configuration
@@ -24,6 +25,9 @@ if (!getApps().length) {
 
 // Initialize Firestore
 const db = getFirestore(firebaseApp);
+
+// Initialize Storage
+const storage = getStorage(firebaseApp);
 
 // Function to add data to Firestore
 const addData = async (collectionName: string, data: Record<string, unknown>) => {
@@ -73,6 +77,47 @@ const checkUserExists = async (email: string) => {
     }
 };
 
+const getNextJobListId = async (collectionName: string) => {
+    try {
+        const q = query(collection(db, collectionName), orderBy("__name__", "desc"), limit(1));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return 1;
+        }
+        const lastDoc = querySnapshot.docs[0];
+        const lastId = parseInt(lastDoc.id, 10);
+        return lastId + 1;
+    } catch (e) {
+        console.error("Error getting next job list ID: ", e);
+        throw e;
+    }
+};
 
-export { db, addData, readData, addUserToList, checkUserExists };
+const uploadImage = async (file: File, onProgress: (progress: number) => void) => {
+    try {
+        const storageRef = ref(storage, `job_list_images/${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                onProgress(progress);
+            },
+            (error) => {
+                console.error("Error uploading image: ", error);
+                throw error;
+            }
+        );
+
+        const snapshot = await uploadTask;
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log("Image uploaded successfully:", downloadURL);
+        return downloadURL;
+    } catch (e) {
+        console.error("Error uploading image: ", e);
+        throw e;
+    }
+};
+
+export { db, addData, readData, addUserToList, checkUserExists, getNextJobListId, uploadImage };
 export default firebaseApp;

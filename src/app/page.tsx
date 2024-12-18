@@ -4,7 +4,7 @@ import { SignInButton, SignedOut, SignedIn, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { addUserToList } from '@/lib/firebase';
+import { addUserToList, checkUserExists } from '@/lib/firebase';
 import { User } from '@/lib/types';
 
 export default function Home() {
@@ -30,14 +30,20 @@ const AddUserToFirestore = () => {
   const { user } = useUser();
 
   useEffect(() => {
-    if (user) {
-      const newUser: User = {
-        email: user.emailAddresses[0].emailAddress,
-        firstName: user.firstName || '',
-        isAdmin: false,
-      };
-      addUserToList(newUser);
-    }
+    const addUser = async () => {
+      if (user) {
+        const userExists = await checkUserExists(user.emailAddresses[0].emailAddress);
+        if (!userExists) {
+          const newUser: User = {
+            email: user.emailAddresses[0].emailAddress,
+            firstName: user.firstName || '',
+            isAdmin: false,
+          };
+          addUserToList(newUser);
+        }
+      }
+    };
+    addUser();
   }, [user]);
 
   return null;
